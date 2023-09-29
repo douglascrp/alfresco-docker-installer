@@ -23,8 +23,17 @@ module.exports = class extends Generator {
         type: 'list',
         name: 'acsVersion',
         message: 'Which ACS version do you want to use?',
-        choices: [ '6.1', '6.2', '7.0', '7.1', '7.2' ],
-        default: '7.2'
+        choices: [ '6.1', '6.2', '7.0', '7.1', '7.2', '7.3', '7.4' ],
+        default: '7.4'
+      },
+      {
+        when: function (response) {
+          return response.acsVersion >= '7.3'  || commandProps['acsVersion'] >= '7.3'
+        },
+        type: 'confirm',
+        name: 'arch',
+        message: 'Do you want to deploy Alfresco in ARCH64 computer (like Apple Silicon)?',
+        default: false
       },
       {
         type: 'input',
@@ -87,6 +96,12 @@ module.exports = class extends Generator {
         default: true
       },
       {
+        type: 'confirm',
+        name: 'enableContentIndexing',
+        message: 'Do you want to search in the content of the documents?',
+        default: true
+      },
+      {
         when: function (response) {
           return response.acsVersion == '7.1' || commandProps['acsVersion'] == '7.1'
         },
@@ -108,7 +123,18 @@ module.exports = class extends Generator {
       },
       {
         when: function (response) {
-          return response.acsVersion >= '7.1'  || commandProps['acsVersion'] >= '7.1'
+          return response.acsVersion >= '7.3'  || commandProps['acsVersion'] >= '7.3'
+        },
+        type: 'confirm',
+        name: 'activemq',
+        message: 'Do you want to use the Events service (ActiveMQ)?',
+        default: false
+      },
+      {
+        when: function (response) {
+          return (response.activemq == undefined && (response.acsVersion >= '7.1' || commandProps['acsVersion'] >= '7.1')) ||
+                 ((response.acsVersion >= '7.3'  || commandProps['acsVersion'] >= '7.3') &&
+                 (response.activemq  || commandProps['activemq']))
         },
         type: 'confirm',
         name: 'activeMqCredentials',
@@ -164,7 +190,7 @@ module.exports = class extends Generator {
             checked: false
           },
           {
-            name: 'Order of the Bee Support Tools 1.0.0.0',
+            name: 'Order of the Bee Support Tools 1.2.0.0',
             value: 'ootbee-support-tools',
             checked: false
           },
@@ -184,7 +210,7 @@ module.exports = class extends Generator {
             checked: false
           },
           {
-            name: 'ESign Cert 1.8.2',
+            name: 'ESign Cert 1.8.4',
             value: 'esign-cert',
             checked: false
           },
@@ -192,13 +218,18 @@ module.exports = class extends Generator {
             name: 'Edit with LibreOffice in Alfresco Share 0.3.0',
             value: 'share-online-edition',
             checked: false
+          },
+          {
+            name: 'Alfresco PDF Toolkit 1.4.4',
+            value: 'alfresco-pdf-toolkit',
+            checked: false
           }
         ]
       },
       {
         type: 'confirm',
         name: 'windows',
-        message: 'Are you using a Windows host to run Docker?',
+        message: 'Do you want Docker to manage volume storage (recommended when dealing with permission issues)?',
         default: false
       },
       {
@@ -257,6 +288,7 @@ module.exports = class extends Generator {
         smtp: (this.props.smtp ? 'true' : 'false'),
         ldap: (this.props.ldap ? 'true' : 'false'),
         crossLocale: (this.props.crossLocale ? 'true' : 'false'),
+        disableContentIndexing: (this.props.enableContentIndexing ? 'false' : 'true'),
         ocr: (this.props.addons.includes('simple-ocr') ? 'true' : 'false'),
         transformerocr: (this.props.addons.includes('alf-tengine-ocr') ? 'true' : 'false'),
         port: this.props.port,
@@ -270,9 +302,11 @@ module.exports = class extends Generator {
         // Generate random password for Repo-SOLR secret communication method
         secretPassword: Math.random().toString(36).slice(2),
         password: computeHashPassword(this.props.password),
+        activemq: (this.props.activemq ? 'true' : 'false'),
         activeMqCredentials: (this.props.activeMqCredentials ? 'true' : 'false'),
         activeMqUser: this.props.activeMqUser,
-        activeMqPassword: this.props.activeMqPassword
+        activeMqPassword: this.props.activeMqPassword,
+        repository: (this.props.arch ? 'angelborroy' : 'alfresco')
       }
     );
 
@@ -283,7 +317,8 @@ module.exports = class extends Generator {
       {
         ocr: (this.props.addons.includes('simple-ocr') ? 'true' : 'false'),
         ftp: (this.props.ftp ? 'true' : 'false'),
-        acsVersion: this.props.acsVersion
+        acsVersion: this.props.acsVersion,
+        repository: (this.props.arch && this.props.acsVersion == '7.3' ? 'angelborroy' : 'alfresco')
       }
     );
     this.fs.copyTpl(
@@ -299,14 +334,18 @@ module.exports = class extends Generator {
         port: this.props.port,
         https: (this.props.https ? 'true' : 'false'),
         googledocs: (this.props.addons.includes('google-docs') ? 'true' : 'false'),
-        acsVersion: this.props.acsVersion
+        acsVersion: this.props.acsVersion,
+        repository: (this.props.arch && this.props.acsVersion == '7.3'  ? 'angelborroy' : 'alfresco')
       }
     );
 
     // Copy Docker Image for Search applying configuration
     this.fs.copyTpl(
       this.templatePath('images/search'),
-      this.destinationPath('search')
+      this.destinationPath('search'),
+      {
+        repository: (this.props.arch ? 'angelborroy' : 'alfresco')
+      }
     );
 
     // Copy NGINX Configuration
@@ -334,8 +373,16 @@ module.exports = class extends Generator {
       );
     }
 
+    // ActiveMQ
+    if (!this.props.activemq && this.props.acsVersion < '7.4') {
+      this.fs.copy(
+        this.templatePath('addons/jars/activemq-broker-*.jar'),
+        this.destinationPath('alfresco/modules/jars')
+      );
+    }
+
     // Addons
-    if (this.props.addons.includes('js-console')) {
+    if (this.props.addons.includes('js-console') && !this.props.addons.includes('ootbee-support-tools')) {
       this.fs.copy(
         this.templatePath('addons/amps/javascript-console-repo-*.amp'),
         this.destinationPath('alfresco/modules/amps')
@@ -399,19 +446,37 @@ module.exports = class extends Generator {
     }
 
     if (this.props.addons.includes('esign-cert')) {
-      this.fs.copy(
-        this.templatePath('addons/amps/esign-cert-repo-*.amp'),
-        this.destinationPath('alfresco/modules/amps')
-      );
-      this.fs.copy(
-        this.templatePath('addons/amps_share/esign-cert-share-*.amp'),
-        this.destinationPath('share/modules/amps')
-      )
+        this.fs.copy(
+          this.templatePath('addons/amps/esign-cert-repo-*.amp'),
+          this.destinationPath('alfresco/modules/amps')
+        );
+        this.fs.copy(
+          this.templatePath('addons/amps_share/esign-cert-share-*.amp'),
+          this.destinationPath('share/modules/amps')
+        )
     }
 
     if (this.props.addons.includes('share-online-edition')) {
       this.fs.copy(
         this.templatePath('addons/amps_share/zk-libreoffice-addon-share*.amp'),
+        this.destinationPath('share/modules/amps')
+      )
+    }
+
+    if (this.props.addons.includes('alfresco-pdf-toolkit')) {
+      if (this.props.acsVersion.startsWith('7')) {
+        this.fs.copy(
+          this.templatePath('addons/amps/pdf-toolkit-repo-1.4.4-ACS-7*.amp'),
+          this.destinationPath('alfresco/modules/amps')
+        )
+      } else {
+        this.fs.copy(
+          this.templatePath('addons/amps/pdf-toolkit-repo-1.4.4-SNAPSHOT*.amp'),
+          this.destinationPath('alfresco/modules/amps')
+        )
+      }
+      this.fs.copy(
+        this.templatePath('addons/amps_share/pdf-toolkit-share*.amp'),
         this.destinationPath('share/modules/amps')
       )
     }
@@ -477,6 +542,23 @@ module.exports = class extends Generator {
       '   Check https://github.com/zylklab/alfresco-share-online-edition-addon#registering-the-protocols \n' +
       '   ---------------------------------------------------\n');
     }
+
+    // Service URLs
+    let protocol = this.props.https ? 'https://' : 'http://'
+    let port = this.props.port != 80 && this.props.port != 443 ? ':' + this.props.port : ''
+    this.log('\n---------------------------------------------------\n' +
+    'STARTING ALFRESCO\n\n' +
+    'Start Alfresco using the command "docker compose up"\n' +
+    'Once the plaform is ready, you will find a line similar to the following one in the terminal:\n' +
+    'alfresco-1 | org.apache.catalina.startup.Catalina.start Server startup in [NNNNN] milliseconds\n\n' +
+    'SERVICE URLs\n\n' +
+    '   * UI: ' + protocol + this.props.serverName + port + '/\n' +
+    '   * Legacy UI (users & groups management): ' + protocol + this.props.serverName + port + '/share\n' +
+    '   * Repository (REST API): ' + protocol + this.props.serverName + port + '/alfresco\n\n' +
+    'Remember to use as credentials: \n\n' +
+    '   * username: admin \n' +
+    '   * password: ' + this.props.password + '\n\n' +
+    '---------------------------------------------------\n');
 
   }
 

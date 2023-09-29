@@ -6,7 +6,7 @@
 
 ## Description
 
-Since Alfresco Installer was discontinued from Alfresco 5.2, this project provides a command line installer for Alfresco Community 6.1, 6.2, 7.0, 7.1 and 7.2 to be used in Docker Compose installations.
+Since Alfresco Installer was discontinued from Alfresco 5.2, this project provides a command line installer for Alfresco Community 6.1, 6.2, 7.0, 7.1, 7.2, 7.3 and 7.4 to be used in Docker Compose installations.
 
 This project generates a Docker Compose template ready to be used including following features:
 
@@ -32,6 +32,8 @@ This program has following dependencies:
 * Node.js
 * Yeoman
 
+Yeoman requires the Node to have a version higher than v14
+
 You can download and install `Node.js` from official web page:
 
 https://nodejs.org/en/download/
@@ -51,6 +53,23 @@ And finally, you can install this generator:
 ```bash
 $ npm install --global generator-alfresco-docker-installer
 ```
+
+**Note for NodeJS 16+**
+
+When using NodeJS 16+, depending on your terminal, it's required to run one of the commands below before using the project.
+
+```
+# macOS, Linux and Windows Git Bash
+export NODE_OPTIONS=--openssl-legacy-provider
+
+# Windows Command Prompt:
+set NODE_OPTIONS=--openssl-legacy-provider
+
+# Windows PowerShell:
+$env:NODE_OPTIONS="--openssl-legacy-provider"
+```
+
+**Deployment**
 
 Deployment is provided for Docker Compose, so following dependencies must be satisfied by the server used to run the generated configuration:
 
@@ -82,10 +101,16 @@ $ yo alfresco-docker-installer
 Several options are provided in order to build the configuration.
 
 ```
-? Which ACS version do you want to use? 7.2
+? Which ACS version do you want to use? 7.4
 ```
 
-You can use Alfresco 6.1, 6.2, 7.0, 7.1 or 7.2
+You can use Alfresco 6.1, 6.2, 7.0, 7.1, 7.2, 7.3 or 7.4
+
+```
+? Do you want to deploy Alfresco in ARCH64 computer (like Apple Silicon)?
+```
+
+Use ARCH64 Docker Images, mandatory when using Apple Silicon computers for deployment. This feature is only provided for ACS 7.3+
 
 ```
 ? How may GB RAM are available for Alfresco (16 is minimum required)? 16
@@ -136,6 +161,12 @@ Alfresco uses PostgreSQL by default, but alternatively `MariaDB` can be used as 
 By default, many organizations are storing document in different languages or the users are accessing the platform with browser configured in different languages. If this is your case, enable this configuration.
 
 ```
+? Do you want to search in the content of the documents?
+```
+
+By default, Alfresco is indexing the content of a document (in addition to the metadata). Disable this option if you don't require searching by the content of the documents.
+
+```
 ? Would you like to use HTTP or Shared Secret for Alfresco-SOLR communication?
   http  << Not available when using ACS 7.2+
   https
@@ -147,6 +178,12 @@ By default, communication between Alfresco and SOLR happens in plain `http`. Sin
 When using `secret` option (only available from 7.1.0), Alfresco and SOLR communication is happening in plain HTTP but including a shared secret word in HTTP Header. This should be a safer approach for open environments.
 
 In addition, when using `https` option, communication between SOLR and Alfresco is using Mutual TLS. This protocol includes client authentication using digital certificates, that may be also a safe alternative.
+
+```
+? Do you want to use the Events service (ActiveMQ)? No
+```
+
+This question is only available from ACS 7.3+. ActiveMQ for Community Edition is only required when using Out-Of-Process SDK, it may be omitted for other use cases.
 
 ```
 ? Do you want to use credentials for Events service (ActiveMQ)? No
@@ -175,17 +212,18 @@ This service provides an internal OpenLDAP server (for authentication). If you w
   Share Site Creators 0.0.8                     : https://github.com/jpotts/share-site-creators
   Simple OCR 2.3.1 (for ACS 6.x)                : https://github.com/keensoft/alfresco-simple-ocr
   Alfresco OCR Transformer 1.0.0 (for ACS 7+)   : https://github.com/aborroy/alf-tengine-ocr
-  ESign Cert 1.8.2                              : https://github.com/keensoft/alfresco-esign-cert
+  ESign Cert 1.8.4                              : https://github.com/ambientelivre/alfresco-esign-cert
   Edit with LibreOffice in Alfresco Share 0.3.0 : https://github.com/zylklab/alfresco-share-online-edition-addon
+  Alfresco PDF Toolkit 1.4.x                    : https://github.com/OrderOfTheBee/alfresco-pdf-toolkit
 ```
 
 A small catalog of trusted *addons* is provided by default, but you can install any other using the deployment folders.
 
 ```
-? Are you using a Windows host to run Docker?
+? Do you want Docker to manage volume storage (recommended when dealing with permission issues)?
 ```
 
-When using a Windows host to run Docker, standard [Docker Volumes](https://docs.docker.com/storage/volumes/) are used instead of [Bind Docker Volumes](https://docs.docker.com/storage/bind-mounts/). This options is easier to run in Docker Windows environments.
+Standard [Docker Volumes](https://docs.docker.com/storage/volumes/) can be used instead of [Bind Docker Volumes](https://docs.docker.com/storage/bind-mounts/). This options is easier to run in environments with folder permission issues.
 
 ```
 ? Do you want to use a start script? Yes
@@ -210,7 +248,7 @@ $ yo alfresco-docker-installer --acsVersion=6.1
 
 **Parameter names reference**
 
-* `--acsVersion`: 6.1, 6.2 or 7.0
+* `--acsVersion`: 6.1, 6.2, 7.0, 7.1, 7.2, 7.3 or 7.4
 * `--ram`: number of GB available for Docker
 * `--mariadb`: true or false
 * `--crossLocale`: true or false

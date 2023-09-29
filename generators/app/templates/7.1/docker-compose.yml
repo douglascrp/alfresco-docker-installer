@@ -88,7 +88,8 @@ services:
                 -Dmail.password=
                 -Dmail.protocol=smtp
                 -Dmail.smtps.starttls.enable=false
-                -Dmail.smtps.auth=false <% } %> <% if (ldap == "true") { %>
+                -Dmail.smtps.auth=false <% } else { %> 
+                -Ddev.email.not.sent=true <% } if (ldap == "true") { %>
                 -Dauthentication.chain=alfinst:alfrescoNtlm,ldap1:ldap
                 -Dldap.authentication.active=true
                 -Dldap.authentication.java.naming.provider.url=ldap://openldap:389
@@ -206,6 +207,7 @@ services:
             TRUSTSTORE_TYPE: JCEKS
             KEYSTORE_TYPE: JCEKS <% } %>
             CROSS_LOCALE: "<%=crossLocale%>"
+            DISABLE_CONTENT_INDEXING: "<%=disableContentIndexing%>"
         mem_limit: <%=ram/4%>m
         environment:
             #Solr needs to know how to register itself with Alfresco
@@ -216,7 +218,7 @@ services:
             SOLR_SOLR_PORT: "8983"
             #Create the default alfresco and archive cores
             SOLR_CREATE_ALFRESCO_DEFAULTS: "alfresco,archive"
-            SOLR_JAVA_MEM: "-Xms<%=(ram/4) - 256%>m -Xmx<%=(ram/4) - 256%>m" <% if (solrHttpMode == 'https') { %>
+            SOLR_JAVA_MEM: "-Xms<%=(ram/4) - 512%>m -Xmx<%=(ram/4) - 512%>m" <% if (solrHttpMode == 'https') { %>
             SOLR_SSL_TRUST_STORE: "/opt/alfresco-search-services/keystore/ssl-repo-client.truststore"
             SOLR_SSL_TRUST_STORE_PASSWORD: "truststore"
             SOLR_SSL_TRUST_STORE_TYPE: "JCEKS"

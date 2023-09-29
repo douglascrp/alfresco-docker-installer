@@ -1,5 +1,5 @@
 ARG SEARCH_TAG
-FROM alfresco/alfresco-search-services:${SEARCH_TAG}
+FROM <%=repository%>/alfresco-search-services:${SEARCH_TAG}
 
 # COMMON
 ARG ALFRESCO_HOSTNAME
@@ -12,6 +12,16 @@ RUN sed -i '/^bash.*/i sed -i "'"s/alfresco.host=localhost/alfresco.host=${ALFRE
     ${DIST_DIR}/solr/bin/search_config_setup.sh && \
     sed -i '/^bash.*/i sed -i "'"s/solr.host=localhost/solr.host=${SOLR_HOSTNAME}/g"'" ${DIST_DIR}/solrhome/conf/shared.properties\n' \
     ${DIST_DIR}/solr/bin/search_config_setup.sh
+
+# Disable content indexing
+ARG DISABLE_CONTENT_INDEXING
+ENV DISABLE_CONTENT_INDEXING $DISABLE_CONTENT_INDEXING
+RUN if [ "$DISABLE_CONTENT_INDEXING" == "true" ] ; then \
+   sed -i '/^bash.*/i sed -i "'"/alfresco.index.transformContent/s/^#//g"'" ${DIST_DIR}/solrhome/templates/rerank/conf/solrcore.properties\n' \
+   ${DIST_DIR}/solr/bin/search_config_setup.sh && \
+   sed -i '/^bash.*/i sed -i "'"/alfresco.ignore.datatype.1/s/^#//g"'" ${DIST_DIR}/solrhome/templates/rerank/conf/solrcore.properties\n' \
+   ${DIST_DIR}/solr/bin/search_config_setup.sh; \
+fi
 
 # Cross Locale
 ARG CROSS_LOCALE
