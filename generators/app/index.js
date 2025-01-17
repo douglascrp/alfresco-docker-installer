@@ -1,7 +1,11 @@
+/* eslint-disable complexity */
+/* eslint-disable dot-notation */
+/* eslint-disable prettier/prettier */
 'use strict';
 const Generator = require('yeoman-generator');
 var banner = require('./banner')
 var nthash = require('smbhash').nthash;
+var compare = require('compare-versions').compare;
 
 /**
  * This module builds a Docker Compose template to use
@@ -18,17 +22,74 @@ module.exports = class extends Generator {
 
     var commandProps = new Map();
 
+    const allAddons = [
+      {
+        name: 'Google Docs 3.x',
+        value: 'google-docs',
+        checked: false
+      },
+      {
+        name: 'JavaScript Console 0.7',
+        value: 'js-console',
+        checked: false
+      },
+      {
+        name: 'Order of the Bee Support Tools 1.2.2.0',
+        value: 'ootbee-support-tools',
+        checked: false
+      },
+      {
+        name: 'Share Site Creators 0.0.8',
+        value: 'share-site-creators',
+        checked: false
+      },
+      {
+        name: 'Share Site Space Templates 1.1.4-SNAPSHOT',
+        value: 'share-site-space-templates',
+        checked: false
+      },
+      {
+        name: 'Simple OCR 2.3.1 (for Alfresco 6.x)',
+        value: 'simple-ocr',
+        checked: false,
+        acsVersions: ['6.1', '6.2']
+      },
+      {
+        name: 'Alfresco OCR Transformer 1.0.0 (for Alfresco 7+)',
+        value: 'alf-tengine-ocr',
+        checked: false,
+        acsVersions: ['7.0', '7.1', '7.2', '7.3', '7.4', '23.1', '23.2', '23.3', '23.4']
+      },
+      {
+        name: 'ESign Cert 1.8.4',
+        value: 'esign-cert',
+        checked: false
+      },
+      {
+        name: 'Edit with LibreOffice in Alfresco Share 0.3.0',
+        value: 'share-online-edition',
+        checked: false
+      },
+      {
+        name: 'Alfresco PDF Toolkit 1.4.4',
+        value: 'alfresco-pdf-toolkit',
+        checked: false,
+        acsVersions: ['6.1', '6.2', '7.0', '7.1', '7.2', '7.3', '7.4']
+      }
+    ];
+
     const prompts = [
       {
         type: 'list',
         name: 'acsVersion',
         message: 'Which ACS version do you want to use?',
-        choices: [ '6.1', '6.2', '7.0', '7.1', '7.2', '7.3', '7.4' ],
-        default: '7.4'
+        choices: [ '6.1', '6.2', '7.0', '7.1', '7.2', '7.3', '7.4', '23.1', '23.2', '23.3', '23.4' ],
+        default: '23.4'
       },
       {
         when: function (response) {
-          return response.acsVersion >= '7.3'  || commandProps['acsVersion'] >= '7.3'
+          var version = response.acsVersion ? response.acsVersion : commandProps['acsVersion'];
+          return compare(version, '7.3', '>=') && compare(version, '23', '<');
         },
         type: 'confirm',
         name: 'arch',
@@ -61,15 +122,6 @@ module.exports = class extends Generator {
       },
       {
         when: function (response) {
-          return !response.https || !commandProps['https']
-        },
-        type: 'input',
-        name: 'port',
-        message: 'What HTTP port do you want to use (all the services are using the same port)?',
-        default: '80'
-      },
-      {
-        when: function (response) {
           return response.https || commandProps['https']
         },
         type: 'input',
@@ -78,10 +130,52 @@ module.exports = class extends Generator {
         default: '443'
       },
       {
+        when: function (response) {
+          return !response.https || !commandProps['https']
+        },
+        type: 'input',
+        name: 'port',
+        message: 'What HTTP port do you want to use (all the services are using the same port)?',
+        default: '80'
+      },
+      {
+        type: 'confirm',
+        name: 'configureHttpIp',
+        message: 'Do you want to specify a custom binding IP for HTTP?',
+        default: false
+      },
+      {
+        when: function (response) {
+          return response.configureHttpIp;
+        },
+        type: 'input',
+        name: 'httpBindingIp',
+        message: 'Enter the IP address to bind the HTTP service:',
+        default: '0.0.0.0'
+      },
+      {
         type: 'confirm',
         name: 'ftp',
         message: 'Do you want to use FTP (port 2121)?',
         default: false
+      },
+      {
+        when: function (response) {
+          return response.ftp;
+        },
+        type: 'confirm',
+        name: 'configureFtpIp',
+        message: 'Do you want to specify a custom binding IP for FTP?',
+        default: false
+      },
+      {
+        when: function (response) {
+          return response.ftp && response.configureFtpIp;
+        },
+        type: 'input',
+        name: 'ftpBindingIp',
+        message: 'Enter the IP address to bind the FTP service:',
+        default: '0.0.0.0'
       },
       {
         type: 'confirm',
@@ -103,7 +197,8 @@ module.exports = class extends Generator {
       },
       {
         when: function (response) {
-          return response.acsVersion == '7.1' || commandProps['acsVersion'] == '7.1'
+          var version = response.acsVersion ? response.acsVersion : commandProps['acsVersion'];
+          return version === '7.1'
         },
         type: 'list',
         name: 'solrHttpMode',
@@ -113,7 +208,8 @@ module.exports = class extends Generator {
       },
       {
         when: function (response) {
-          return response.acsVersion >= '7.2' || commandProps['acsVersion'] >= '7.2'
+          var version = response.acsVersion ? response.acsVersion : commandProps['acsVersion'];
+          return compare(version, '7.2', '>=')
         },
         type: 'list',
         name: 'solrHttpMode',
@@ -123,7 +219,8 @@ module.exports = class extends Generator {
       },
       {
         when: function (response) {
-          return response.acsVersion >= '7.3'  || commandProps['acsVersion'] >= '7.3'
+          var version = response.acsVersion ? response.acsVersion : commandProps['acsVersion'];
+          return compare(version, '7.3', '>=')
         },
         type: 'confirm',
         name: 'activemq',
@@ -132,9 +229,10 @@ module.exports = class extends Generator {
       },
       {
         when: function (response) {
-          return (response.activemq == undefined && (response.acsVersion >= '7.1' || commandProps['acsVersion'] >= '7.1')) ||
-                 ((response.acsVersion >= '7.3'  || commandProps['acsVersion'] >= '7.3') &&
-                 (response.activemq  || commandProps['activemq']))
+          var version = response.acsVersion ? response.acsVersion : commandProps['acsVersion'];
+          return compare(version, '7.1', '>=') &&
+                 !(response.activemq === undefined) &&
+                 (response.activemq || commandProps['activemq'])
         },
         type: 'confirm',
         name: 'activeMqCredentials',
@@ -143,8 +241,9 @@ module.exports = class extends Generator {
       },
       {
         when: function (response) {
-          return (response.acsVersion >= '7.1' && response.activeMqCredentials) ||
-                 (commandProps['acsVersion'] >= '7.1' && commandProps['activeMqCredentials'])
+          var version = response.acsVersion ? response.acsVersion : commandProps['acsVersion'];
+          var creds = response.activeMqCredentials ? response.activeMqCredentials: commandProps['activeMqCredentials'];
+          return compare(version, '7.1', '>=') && creds;
         },
         type: 'input',
         name: 'activeMqUser',
@@ -153,8 +252,9 @@ module.exports = class extends Generator {
       },
       {
         when: function (response) {
-          return (response.acsVersion >= '7.1' && response.activeMqCredentials) ||
-                 (commandProps['acsVersion'] >= '7.1' && commandProps['activeMqCredentials'])
+          var version = response.acsVersion ? response.acsVersion : commandProps['acsVersion'];
+          var creds = response.activeMqCredentials ? response.activeMqCredentials: commandProps['activeMqCredentials'];
+          return compare(version, '7.1', '>=') && creds;
         },
         type: 'input',
         name: 'activeMqPassword',
@@ -178,53 +278,12 @@ module.exports = class extends Generator {
         name: 'addons',
         pageSize: 10,
         message: 'Select the addons to be installed:',
-        choices: [
-          {
-            name: 'Google Docs 3.1.0',
-            value: 'google-docs',
-            checked: false
-          },
-          {
-            name: 'JavaScript Console 0.7',
-            value: 'js-console',
-            checked: false
-          },
-          {
-            name: 'Order of the Bee Support Tools 1.2.0.0',
-            value: 'ootbee-support-tools',
-            checked: false
-          },
-          {
-            name: 'Share Site Creators 0.0.8',
-            value: 'share-site-creators',
-            checked: false
-          },
-          {
-            name: 'Simple OCR 2.3.1 (for Alfresco 6.x)',
-            value: 'simple-ocr',
-            checked: false
-          },
-          {
-            name: 'Alfresco OCR Transformer 1.0.0 (for Alfresco 7+)',
-            value: 'alf-tengine-ocr',
-            checked: false
-          },
-          {
-            name: 'ESign Cert 1.8.4',
-            value: 'esign-cert',
-            checked: false
-          },
-          {
-            name: 'Edit with LibreOffice in Alfresco Share 0.3.0',
-            value: 'share-online-edition',
-            checked: false
-          },
-          {
-            name: 'Alfresco PDF Toolkit 1.4.4',
-            value: 'alfresco-pdf-toolkit',
-            checked: false
-          }
-        ]
+        choices: (answers) => {
+          // Filter addons based on the selected ACS version
+          return allAddons.filter(addon =>
+            !addon.acsVersions || addon.acsVersions.includes(answers.acsVersion)
+          );
+        },
       },
       {
         type: 'confirm',
@@ -249,7 +308,7 @@ module.exports = class extends Generator {
 
     // Read options from command line parameters
     const filteredPrompts = [];
-    prompts.forEach(function prompts(prompt) {
+    prompts.forEach(function (prompt) {
       const option = this.options[prompt.name];
       if (option === undefined) {
         filteredPrompts.push(prompt);
@@ -274,7 +333,9 @@ module.exports = class extends Generator {
       this.templatePath(this.props.acsVersion + '/.env'),
       this.destinationPath('.env'),
       {
-        serverName: this.props.serverName
+        serverName: this.props.serverName,
+        bindIpFtp: this.props.ftpBindingIp,
+        bindIpNginx: this.props.httpBindingIp
       }
     )
 
@@ -298,7 +359,7 @@ module.exports = class extends Generator {
         googledocs: (this.props.addons.includes('google-docs') ? 'true' : 'false'),
         serverName: this.props.serverName,
         solrHttpMode: this.props.solrHttpMode,
-        secureComms: (this.props.solrHttpMode == 'http' ? 'none' : this.props.solrHttpMode),
+        secureComms: (this.props.solrHttpMode === 'http' ? 'none' : this.props.solrHttpMode),
         // Generate random password for Repo-SOLR secret communication method
         secretPassword: Math.random().toString(36).slice(2),
         password: computeHashPassword(this.props.password),
@@ -306,7 +367,7 @@ module.exports = class extends Generator {
         activeMqCredentials: (this.props.activeMqCredentials ? 'true' : 'false'),
         activeMqUser: this.props.activeMqUser,
         activeMqPassword: this.props.activeMqPassword,
-        repository: (this.props.arch ? 'angelborroy' : 'alfresco')
+        repository: (this.props.arch ? 'angelborroy' : 'alfresco'),
       }
     );
 
@@ -318,7 +379,7 @@ module.exports = class extends Generator {
         ocr: (this.props.addons.includes('simple-ocr') ? 'true' : 'false'),
         ftp: (this.props.ftp ? 'true' : 'false'),
         acsVersion: this.props.acsVersion,
-        repository: (this.props.arch && this.props.acsVersion == '7.3' ? 'angelborroy' : 'alfresco')
+        repository: (this.props.arch && this.props.acsVersion === '7.3' ? 'angelborroy' : 'alfresco')
       }
     );
     this.fs.copyTpl(
@@ -335,7 +396,8 @@ module.exports = class extends Generator {
         https: (this.props.https ? 'true' : 'false'),
         googledocs: (this.props.addons.includes('google-docs') ? 'true' : 'false'),
         acsVersion: this.props.acsVersion,
-        repository: (this.props.arch && this.props.acsVersion == '7.3'  ? 'angelborroy' : 'alfresco')
+        repository: (this.props.arch && this.props.acsVersion === '7.3'  ? 'angelborroy' : 'alfresco'),
+        serverName: this.props.serverName
       }
     );
 
@@ -355,7 +417,8 @@ module.exports = class extends Generator {
       {
         port: this.props.port,
         https: (this.props.https ? 'true' : 'false'),
-        solrHttps: (this.props.solrHttpMode == 'https' ? 'true' : 'false')
+        solrHttps: (this.props.solrHttpMode === 'https' ? 'true' : 'false'),
+        ldap: (this.props.ldap ? 'true' : 'false')
       }
     );
     if (this.props.https) {
@@ -366,7 +429,7 @@ module.exports = class extends Generator {
     }
 
     // Copy mTLS Keystores
-    if (this.props.solrHttpMode == 'https') {
+    if (this.props.solrHttpMode === 'https') {
       this.fs.copy(
         this.templatePath('keystores'),
         this.destinationPath('keystores')
@@ -413,6 +476,13 @@ module.exports = class extends Generator {
         this.templatePath('addons/amps_share/share-site-creators-share-*.amp'),
         this.destinationPath('share/modules/amps')
       )
+    }
+
+    if (this.props.addons.includes('share-site-space-templates')) {
+      this.fs.copy(
+        this.templatePath('addons/amps/share-site-space-templates-repo-*.amp'),
+        this.destinationPath('alfresco/modules/amps')
+      );
     }
 
     if (this.props.addons.includes('simple-ocr')) {
@@ -516,7 +586,7 @@ module.exports = class extends Generator {
       '   ---------------------------------------------------------------\n');
     }
 
-    if (this.props.solrHttpMode == 'https') {
+    if (this.props.solrHttpMode === 'https') {
       this.log('\n   ---------------------------------------------------------------\n' +
       '   WARNING: You selected HTTPs communication for Alfresco-Solr. \n' +
       '   Default keystores have been provided in keystores folder. \n' +
@@ -545,7 +615,7 @@ module.exports = class extends Generator {
 
     // Service URLs
     let protocol = this.props.https ? 'https://' : 'http://'
-    let port = this.props.port != 80 && this.props.port != 443 ? ':' + this.props.port : ''
+    let port = this.props.port !== 80 && this.props.port !== 443 ? ':' + this.props.port : ''
     this.log('\n---------------------------------------------------\n' +
     'STARTING ALFRESCO\n\n' +
     'Start Alfresco using the command "docker compose up"\n' +
@@ -571,9 +641,13 @@ function normalize(option, prompt) {
     let lc = option.toLowerCase();
     if (lc === 'true' || lc === 'false') {
       return (lc === 'true');
-    } else {
-      return option;
     }
+      return option;
+  }
+
+  // Fix acsVersion value type
+  if (prompt.name === 'acsVersion') {
+    option = String(option);
   }
 
   return option;
@@ -588,18 +662,18 @@ function getAvailableMemory(props) {
   // Content app and Proxy required RAM
   ram = ram - 256 - 128;
 
-  if (props.acsVersion == '6.2') {
-    ram = ram - 2048;
+  if (props.acsVersion === '6.2') {
+    ram -= 2048;
   }
 
   if (props.smtp) {
-    ram = ram - 128;
+    ram -= 128;
   }
   if (props.ldap) {
-    ram = ram - 256;
+    ram -= 256;
   }
   if (props.ocr) {
-    ram = ram - 512;
+    ram -= 512;
   }
   return ram;
 

@@ -6,12 +6,12 @@
 
 ## Description
 
-Since Alfresco Installer was discontinued from Alfresco 5.2, this project provides a command line installer for Alfresco Community 6.1, 6.2, 7.0, 7.1, 7.2, 7.3 and 7.4 to be used in Docker Compose installations.
+Since Alfresco Installer was discontinued from Alfresco 5.2, this project provides a command line installer for Alfresco Community 6.1, 6.2, 7.x and 23.x to be used in Docker Compose installations.
 
 This project generates a Docker Compose template ready to be used including following features:
 
 * RAM limits for every service according to global memory available for Docker
-* PostgreSQL or MariaDB as database (no other option but MySQL is supported for Community)
+* The project supports PostgreSQL and MariaDB as databases, but MySQL can also be used for the Community edition.
 * Search Services configured for environments using several languages for contents or from operative systems / browsers
 * Outbound Email service (smtp)
 * LDAP service for identification (based in OpenLDAP)
@@ -101,10 +101,10 @@ $ yo alfresco-docker-installer
 Several options are provided in order to build the configuration.
 
 ```
-? Which ACS version do you want to use? 7.4
+? Which ACS version do you want to use? 23.4
 ```
 
-You can use Alfresco 6.1, 6.2, 7.0, 7.1, 7.2, 7.3 or 7.4
+You can use Alfresco 6.1, 6.2, 7.0, 7.1, 7.2, 7.3, 7.4, 23.1, 23.2, 23.3 or 23.4
 
 ```
 ? Do you want to deploy Alfresco in ARCH64 computer (like Apple Silicon)?
@@ -143,10 +143,27 @@ Alfresco provides `admin` password by default, choose a different one for new de
 HTTP port to be used by every service. If you are running on a Linux computer, you'll need to specify a port greater than 1024 when not starting as `root` user.
 
 ```
+? Do you want to specify a custom binding IP for HTTP? No
+```
+
+If you choose 'No', the default binding IP (0.0.0.0) will be used, allowing the HTTP service to accept requests from all network interfaces on the server. Selecting 'No' is suitable for most configurations where no specific network restrictions are required.
+
+```
 ? Do you want to use FTP (port 2121)? No
 ```
 
 Enable configuration for FTP, using by default port 2121.
+
+```
+? Do you want to specify a custom binding IP for FTP? No
+```
+
+If you choose 'No', the default binding IP (0.0.0.0) will be used, allowing the FTP service to accept requests from all network interfaces on the server. Selecting 'No' is suitable for most configurations where no specific network restrictions are required.
+
+```
+Enter the IP address to bind the FTP service:
+```
+Specify the IP address that the FTP service should bind to. The default value (0.0.0.0) allows the FTP service to listen for connections on all available network interfaces.
 
 ```
 ? Do you want to use MariaDB instead of PostgreSQL? No
@@ -208,8 +225,9 @@ This service provides an internal OpenLDAP server (for authentication). If you w
 ? Select the addons to be installed:
   Google Docs 3.1.0                             : https://github.com/Alfresco/google-docs/tree/V3.0.3
   JavaScript Console 0.7                        : https://github.com/AFaust/js-console
-  Order of the Bee Support Tools 1.1.0.0        : https://github.com/OrderOfTheBee/ootbee-support-tools
+  Order of the Bee Support Tools 1.2.2.0        : https://github.com/OrderOfTheBee/ootbee-support-tools
   Share Site Creators 0.0.8                     : https://github.com/jpotts/share-site-creators
+  Share Site Space Templates 1.1.4-SNAPSHOT     : https://github.com/jpotts/share-site-space-templates
   Simple OCR 2.3.1 (for ACS 6.x)                : https://github.com/keensoft/alfresco-simple-ocr
   Alfresco OCR Transformer 1.0.0 (for ACS 7+)   : https://github.com/aborroy/alf-tengine-ocr
   ESign Cert 1.8.4                              : https://github.com/ambientelivre/alfresco-esign-cert
@@ -248,7 +266,7 @@ $ yo alfresco-docker-installer --acsVersion=6.1
 
 **Parameter names reference**
 
-* `--acsVersion`: 6.1, 6.2, 7.0, 7.1, 7.2, 7.3 or 7.4
+* `--acsVersion`: 6.1, 6.2, 7.0, 7.1, 7.2, 7.3, 7.4, 23.1, 23.2, 23.3 or 23.4
 * `--ram`: number of GB available for Docker
 * `--mariadb`: true or false
 * `--crossLocale`: true or false
